@@ -16,15 +16,17 @@ export interface CodeblockOptions {
 
 export default class TagCloudPlugin extends Plugin {
 
-	parseCodeblockOptions(source: string): CodeblockOptions {
+	parseCodeblockOptions(source: string): CodeblockOptions | null {
 		const yaml = source ? parseYaml(source) : {};
 
 
-		const max_width = getComputedStyle(
+		const previewBlock = getComputedStyle(
 			document.querySelector(
 				'.markdown-preview-view.is-readable-line-width .markdown-preview-sizer'
-			)
-		).getPropertyValue('width');
+			));
+		if(previewBlock === undefined) return undefined;
+
+		const max_width = previewBlock.getPropertyValue('width');
 
 		//remove any units
 		const width = yaml.width ? yaml.width : Number(max_width.replace(/[^\d]/g, ''));
@@ -36,10 +38,11 @@ export default class TagCloudPlugin extends Plugin {
 		const darkEL = document.getElementsByClassName("theme-dark")[0];
 		const lightEl = document.getElementsByClassName("theme-light")[0];
 
+
 		if (isDarkMode) {
-			background = getComputedStyle(darkEL).getPropertyValue('--background-primary');
+			background = window.getComputedStyle(darkEL).getPropertyValue('--background-primary');
 		} else {
-			background = getComputedStyle(lightEl).getPropertyValue('--background-primary');
+			background = window.getComputedStyle(lightEl).getPropertyValue('--background-primary');
 		}
 
 		return {
@@ -61,6 +64,7 @@ export default class TagCloudPlugin extends Plugin {
 
 		this.registerMarkdownCodeBlockProcessor('wordcloud', async (source, el, ctx) => {
 			const options = this.parseCodeblockOptions(source);
+			if (options === undefined) return;
 
 			const file = this.app.vault.getAbstractFileByPath(ctx.sourcePath);
 			if (file === undefined) return;
@@ -85,6 +89,7 @@ export default class TagCloudPlugin extends Plugin {
 
 		this.registerMarkdownCodeBlockProcessor('tagcloud', (source, el, _) => {
 			const options = this.parseCodeblockOptions(source);
+			if (options === undefined) return;
 
 			const tags: string[] = [];
 
