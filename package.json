@@ -6,16 +6,18 @@
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
 		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
-		"version": "node version-bump.mjs && git add manifest.json versions.json"
+		"version": "node version-bump.mjs && git add manifest.json versions.json",
+		"lint": "eslint . --ext .ts"
 	},
 	"keywords": [],
-	"author": "",
-	"license": "MIT",
+	"author": "joethei",
+	"license": "GPL-3.0",
 	"devDependencies": {
 		"@types/node": "^16.11.6",
 		"@typescript-eslint/eslint-plugin": "^5.2.0",
 		"@typescript-eslint/parser": "^5.2.0",
 		"builtin-modules": "^3.2.0",
+		"eslint": "^8.8.0",
 		"esbuild": "0.13.12",
 		"obsidian": "^0.12.17",
 		"tslib": "2.3.1",
