@@ -47,15 +47,17 @@ export default class TagCloudPlugin extends Plugin {
 			.replace(/^```.*\n([\s\S]*?)```$/gm, ''); //codeblocks
 	}
 
-	parseCodeblockOptions(source: string): CodeblockOptions | null {
+	parseCodeblockOptions(source: string): CodeblockOptions | undefined {
 		const yaml = source ? parseYaml(source) : {};
-
 
 		const previewBlock = getComputedStyle(
 			document.querySelector(
 				'.markdown-preview-view.is-readable-line-width .markdown-preview-sizer'
 			));
-		if (previewBlock === undefined) return undefined;
+		if (previewBlock === undefined) {
+			console.error("Preview block is undefined");
+			return undefined;
+		}
 
 		const max_width = previewBlock.getPropertyValue('width');
 
@@ -67,14 +69,16 @@ export default class TagCloudPlugin extends Plugin {
 		let background;
 		let color: string;
 
-		const darkEL = document.getElementsByClassName("theme-dark")[0];
+		const darkEl = document.getElementsByClassName("theme-dark")[0];
 		const lightEl = document.getElementsByClassName("theme-light")[0];
 
 		if (isDarkMode) {
-			background = window.getComputedStyle(darkEL).getPropertyValue('--background-primary');
+			const style = window.getComputedStyle(darkEl);
+			background = style.getPropertyValue('--background-primary');
 			color = "random-light";
 		} else {
-			background = window.getComputedStyle(lightEl).getPropertyValue('--background-primary');
+			const style = window.getComputedStyle(lightEl);
+			background = style.getPropertyValue('--background-primary');
 			color = "random-dark";
 		}
 
@@ -100,7 +104,7 @@ export default class TagCloudPlugin extends Plugin {
 	}
 
 	removeStopwords(words: string[]): string[] {
-		const customStopwords = this.settings.stopwords.toLowerCase().split("\n");
+		const customStopwords = this.settings ? this.settings.stopwords.toLowerCase().split("\n") : [];
 		const stopwords: string[] = [];
 		Object.entries(stopword).forEach(stopword => {
 			if (stopword[0] !== "removeStopwords")
@@ -117,8 +121,8 @@ export default class TagCloudPlugin extends Plugin {
 	async calculateWordDistribution() {
 		if (this.calculatingWordDistribution) return;
 		this.calculatingWordDistribution = true;
-		console.log("scanning files");
-		new Notice("Scanning files");
+		console.log("Calculating word distribution");
+		new Notice("Calculating word distribution");
 		for (const file of this.app.vault.getFiles()) {
 			if (file === undefined) continue;
 			if (file.extension !== "md") continue;
@@ -130,8 +134,8 @@ export default class TagCloudPlugin extends Plugin {
 			const withoutStopWords = this.removeStopwords(words);
 			this.fileContentsWithoutStopwords = this.convertToMap(withoutStopWords);
 		}
-		console.log("finished scanning files");
-		new Notice("finished scanning files");
+		console.log("Finished calculating word distribution");
+		new Notice("Finished calculating word distribution");
 		this.calculatingWordDistribution = false;
 	}
 
@@ -140,18 +144,18 @@ export default class TagCloudPlugin extends Plugin {
 	}
 
 	async onload() {
-		console.log("enabling Tag cloud plugin");
+		console.log("enabling Tag & Word cloud plugin");
 		await this.loadSettings();
 		this.addSettingTab(new TagCloudPluginSettingsTab(this));
+
+		if (!WordCloud.isSupported) {
+			new Notice("the Word & Tag cloud plugin is not compatible with your device");
+			throw Error("the tag cloud plugin is not supported on your device");
+		}
 
 		this.app.workspace.onLayoutReady(async () => {
 			await this.calculateWordDistribution();
 		});
-
-		if (!WordCloud.isSupported) {
-			console.log("tag cloud plugin could not be enabled, something is incompatible");
-			throw Error("the tag cloud plugin is not supported on your device");
-		}
 
 		this.addCommand({
 			id: "recalcuate-word-distribution",
@@ -166,8 +170,13 @@ export default class TagCloudPlugin extends Plugin {
 		})
 
 		this.registerMarkdownCodeBlockProcessor('wordcloud', async (source, el, ctx) => {
+			el.createEl('p').setText("generating tag cloud");
+
 			const options = this.parseCodeblockOptions(source);
-			if (options === undefined) return;
+			if (options === undefined) {
+				el.createEl('p', {cls: "cloud-error"}).setText("An error has occurred while reading the options, please check the console");
+				return;
+			}
 
 			let content: Map<string, number> = new Map<string, number>();
 
@@ -183,6 +192,9 @@ export default class TagCloudPlugin extends Plugin {
 				}
 			}
 			if (options.source === 'vault') {
+				if(this.fileContentsWithStopwords.size === 0) {
+					el.createEl("p", {cls: "cloud-error"}).setText("there is no content currently, try again later");
+				}
 				if (options.stopwords) {
 					content = this.fileContentsWithoutStopwords;
 				} else {
@@ -217,6 +229,15 @@ export default class TagCloudPlugin extends Plugin {
 				}
 			}*/
 
+			el.empty();
+
+			if(this.calculatingWordDistribution) {
+				el.createEl('p').setText('Word distribution is currently being calculated, reopen this note after calculation has finished');
+			}
+
+			//TODO: remove after debugging issue on user side.
+			console.log(content);
+
 			const canvas = el.createEl('canvas', {attr: {id: "wordcloud"}});
 			canvas.width = options.width;
 			canvas.height = options.height;
@@ -239,10 +260,13 @@ export default class TagCloudPlugin extends Plugin {
 		});
 
 		this.registerMarkdownCodeBlockProcessor('tagcloud', async (source, el, ctx) => {
-			const options = this.parseCodeblockOptions(source);
-			if (options === undefined) return;
-
 			el.createEl('p').setText("generating tag cloud");
+			const options = this.parseCodeblockOptions(source);
+
+			if (options === undefined) {
+				el.createEl('p', {cls: "cloud-error"}).setText("An error has occurred while reading the options, please check the console");
+				return;
+			}
 
 			const tags: string[] = [];
 
@@ -288,6 +312,11 @@ export default class TagCloudPlugin extends Plugin {
 
 			const map = tags.map(t => t.replace('#', '')).reduce((acc, e) => acc.set(e, (acc.get(e) || 0) + 1), new Map());
 
+			//TODO: remove after debugging issue on user side.
+			console.log(map);
+
+			el.empty();
+
 			const canvas = el.createEl('canvas', {attr: {id: "tagcloud"}});
 			canvas.width = options.width;
 			canvas.height = options.height;
@@ -327,7 +356,7 @@ export default class TagCloudPlugin extends Plugin {
 	}
 
 	onunload() {
-		console.log("disabling Tag cloud plugin");
+		console.log("disabling Tag & Word cloud plugin");
 	}
 
 	async loadSettings() {

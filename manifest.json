@@ -1,7 +1,7 @@
 {
 	"id": "tag-word-cloud",
 	"name": "Tag & Word Cloud",
-	"version": "1.1.0",
+	"version": "1.1.1",
 	"minAppVersion": "0.12.0",
 	"description": "Show a cloud of your tags/words in a note",
 	"author": "Johannes Theiner",
