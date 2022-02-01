@@ -44,7 +44,9 @@ export default class TagCloudPlugin extends Plugin {
 			.replace(/\*|_|\[\[|\]\]|\||==|~~|---|#|> |`/g, "") // Markdown Syntax
 			.replace(/<!--.*?-->/sg, "") //HTML Comments
 			.replace(/%%.*?%%/sg, "")//Obsidian Comments
-			.replace(/^```.*\n([\s\S]*?)```$/gm, ''); //codeblocks
+			.replace(/^```.*\n([\s\S]*?)```$/gm, '') //codeblocks
+			.replace(/\[\^[[\s\S]]*\]/g, '') //footnotes
+			.replace(/\^\[([\s\S]*?)\]/g, '$1'); //inline footnotes
 	}
 
 	parseCodeblockOptions(source: string): CodeblockOptions | undefined {
@@ -122,10 +124,13 @@ export default class TagCloudPlugin extends Plugin {
 		if (this.calculatingWordDistribution) return;
 		this.calculatingWordDistribution = true;
 		console.log("Calculating word distribution");
+		const files = this.app.vault.getMarkdownFiles();
+		console.log("will analyze %i files", files.length);
 		new Notice("Calculating word distribution");
-		for (const file of this.app.vault.getFiles()) {
+
+		let fileCount = 0;
+		for (const file of files) {
 			if (file === undefined) continue;
-			if (file.extension !== "md") continue;
 
 			const fileContent = await this.app.vault.read(file);
 			const words = this.getWords(fileContent);
@@ -133,8 +138,11 @@ export default class TagCloudPlugin extends Plugin {
 
 			const withoutStopWords = this.removeStopwords(words);
 			this.fileContentsWithoutStopwords = this.convertToMap(withoutStopWords);
+
+			fileCount++;
 		}
 		console.log("Finished calculating word distribution");
+		console.log("analyzed %i files", fileCount);
 		new Notice("Finished calculating word distribution");
 		this.calculatingWordDistribution = false;
 	}
@@ -177,6 +185,9 @@ export default class TagCloudPlugin extends Plugin {
 				el.createEl('p', {cls: "cloud-error"}).setText("An error has occurred while reading the options, please check the console");
 				return;
 			}
+
+			//TODO: remove after debugging issue on user side.
+			console.log(options);
 
 			let content: Map<string, number> = new Map<string, number>();
 
@@ -267,6 +278,9 @@ export default class TagCloudPlugin extends Plugin {
 				el.createEl('p', {cls: "cloud-error"}).setText("An error has occurred while reading the options, please check the console");
 				return;
 			}
+
+			//TODO: remove after debugging issue on user side.
+			console.log(options);
 
 			const tags: string[] = [];
 
