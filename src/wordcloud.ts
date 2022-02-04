@@ -1,4 +1,4 @@
-import TagCloudPlugin from "./main";
+import TagCloudPlugin, {logger} from "./main";
 import {MarkdownPostProcessorContext, TFile} from "obsidian";
 import WordCloud from "wordcloud";
 
@@ -70,7 +70,12 @@ export class Wordcloud {
 			}
 		}*/
 
-		const filtered = Array.from(content.entries()).filter(([_, v]) => v >= options.minCount);
+		logger.debug("not filtered ", content);
+
+		const filtered = Array.from(content.entries()).filter(([_, v]) => {
+			return v >= options.minCount;
+		});
+		logger.debug("filtered elements", filtered);
 
 		el.empty();
 

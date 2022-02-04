@@ -119,18 +119,23 @@ export default class TagCloudPlugin extends Plugin {
 			.replace(/\*(.*?)\*/gm, '$1') //italic
 			.replace(/#/g, '') //headers
 			.replace(/-/g, '') //lists
-			.replace(/>/g, '') //	quotes
 			.replace(/\[\[(.*(?=\|))(.*)\]\]/g, '$2') //wikilinks with alias
 			.replace(/\[\[([\s\S]*?)\]\]/gm, '$1') //wikilinks
-			.replace(/- ?\[.{1}?\]/gm,'') //tasks
+			.replace(/- ?\[.?\]/gm,'') //tasks
 			.replace(/%%.*?%%/gm, '')//Obsidian Comments
 			.replace(/`([\s\S]*?)`/gm, '') //codeblocks, inline & normal
 			.replace(/\[\^[[\s\S]]*\]/g, '') //footnotes
 			.replace(/\^\[([\s\S]*?)\]/g, '$1') //inline footnotes
 			.replace(/\$\$([\s\S]*?)\$\$/gm, '') //LaTeX
 			.replace(/\$([\s\S]*?)\$/gm, '') //LaTeX inline
-			.replace(/<("[^"]*"|'[^']*'|[^'">])*>/gm, ''); //html (regex from: https://www.data2type.de/xml-xslt-xslfo/regulaere-ausdruecke/regex-methoden-aus-der-praxis/beispiele-zu-html/html-tags-erkennen)
+			.replace(/\[([\s\S]*?)\]/g, '$1')//normal brackets[]
+			.replace(/\(([\s\S]*?)\)/g, '$1')//normal brackets()
+			.replace(/^(.*?)::(.*?)$/gm, '') //dataview inline attributes
+			.replace(/[,;:|]/g, '')
+			.replace(/<("[^"]*"|'[^']*'|[^'">])*>/gm, '') //html (regex from: https://www.data2type.de/xml-xslt-xslfo/regulaere-ausdruecke/regex-methoden-aus-der-praxis/beispiele-zu-html/html-tags-erkennen)
+			.replace(/\s\S\s/g, ' '); //single chars
 	}
+
 
 	removeStopwords(words: string[]): string[] {
 		const customStopwords = this.settings ? this.settings.stopwords.toLowerCase().split("\n") : [];
