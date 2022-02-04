@@ -1,8 +1,13 @@
-import {getAllTags, Notice, parseYaml, Plugin, TFile} from 'obsidian';
+import {Notice, parseYaml, Plugin} from 'obsidian';
 import WordCloud from "wordcloud";
 import stopword from "stopword";
 import {DEFAULT_SETTINGS, TagCloudPluginSettings, TagCloudPluginSettingsTab} from "./settings";
-import {getAPI} from "obsidian-dataview";
+import {LoggerManager} from "typescript-logger";
+import {TagCloud} from "./tagcloud";
+import {Wordcloud} from "./wordcloud";
+import {LinkCloud} from "./linkcloud";
+
+export const logger = LoggerManager.create("Tag & Word Cloud");
 
 export interface CodeblockOptions {
 	width: number,
@@ -22,32 +27,20 @@ export interface CodeblockOptions {
 	shuffle: boolean,
 	rotateRatio: number,
 	query: string,
+	minCount: number,
+	type: 'unresolved' | 'resolved' | 'both';
 }
-
 
 export default class TagCloudPlugin extends Plugin {
 	settings: TagCloudPluginSettings;
 
-	//cache for word frequency
+	//caches for word frequency
 	fileContentsWithStopwords: Map<string, number> = new Map<string, number>();
 	fileContentsWithoutStopwords: Map<string, number> = new Map<string, number>();
 
-	//guard against running the word frequency calculation simultaneously(computationally intensive).
+	//guard against running the word frequency calculation simultaneously
 	calculatingWordDistribution = false;
-
-	//original code taken from: https://gist.github.com/chrisgrieser/ac16a80cdd9e8e0e84606cc24e35ad99
-	removeMarkdown(text: string): string {
-		return text
-			.replace(/`\$?=[^`]+`/g, "") // inline dataview
-			.replace(/^---\n.*?\n---\n/s, "") // YAML Header
-			.replace(/!?\[(.+)\]\(.+\)/g, "$1") // URLs & Image Captions
-			.replace(/\*|_|\[\[|\]\]|\||==|~~|---|#|> |`/g, "") // Markdown Syntax
-			.replace(/<!--.*?-->/sg, "") //HTML Comments
-			.replace(/%%.*?%%/sg, "")//Obsidian Comments
-			.replace(/^```.*\n([\s\S]*?)```$/gm, '') //codeblocks
-			.replace(/\[\^[[\s\S]]*\]/g, '') //footnotes
-			.replace(/\^\[([\s\S]*?)\]/g, '$1'); //inline footnotes
-	}
+	quit = false;
 
 	parseCodeblockOptions(source: string): CodeblockOptions | undefined {
 		const yaml = source ? parseYaml(source) : {};
@@ -57,14 +50,21 @@ export default class TagCloudPlugin extends Plugin {
 				'.markdown-preview-view.is-readable-line-width .markdown-preview-sizer'
 			));
 		if (previewBlock === undefined) {
-			console.error("Preview block is undefined");
+			logger.error("Preview block is undefined");
 			return undefined;
 		}
 
-		const max_width = previewBlock.getPropertyValue('width');
+		const max_width = document.querySelectorAll(
+			'.markdown-preview-view.is-readable-line-width .markdown-preview-sizer, .cm-content'
+		)[0].clientWidth;
 
-		//remove any units
-		const width = yaml.width ? yaml.width : Number(max_width.replace(/[^\d]/g, ''));
+
+		let width = yaml.width ? yaml.width : max_width;
+		//fallback if this somehow is empty
+		if(width <= 0) {
+			logger.warn("width is not defined, using fallback value");
+			width = 500;
+		}
 
 		//@ts-ignore
 		const isDarkMode = app.getTheme() === "obsidian";
@@ -102,7 +102,34 @@ export default class TagCloudPlugin extends Plugin {
 			shuffle: yaml.shuffle ? yaml.shuffle : true,
 			rotateRatio: yaml.rotateRatio ? yaml.rotateRatio : 0.1,
 			query: yaml.query,
+			minCount: yaml.minCount ? yaml.minCount : 0,
+			type: yaml.type ? yaml.type : 'resolved'
 		}
+	}
+
+	//original code taken from: https://gist.github.com/chrisgrieser/ac16a80cdd9e8e0e84606cc24e35ad99
+	removeMarkdown(text: string): string {
+		return text
+			.replace(/^---\n.*?\n---\n/s, '') // YAML Frontmatter
+			.replace(/!?\[(.+)\]\(.+\)/g, '$1') // URLs & Images, we do want to keep the contents of the alias
+			.replace(/__(.*?)__/gm, '$1') //bold
+			.replace(/_(.*?)_/gm, '$1') //italic
+			.replace(/==(.*?)==/gm, '$1') //highlights
+			.replace(/\*\*(.*?)\*\*/gm, '$1') //bold
+			.replace(/\*(.*?)\*/gm, '$1') //italic
+			.replace(/#/g, '') //headers
+			.replace(/-/g, '') //lists
+			.replace(/>/g, '') //	quotes
+			.replace(/\[\[(.*(?=\|))(.*)\]\]/g, '$2') //wikilinks with alias
+			.replace(/\[\[([\s\S]*?)\]\]/gm, '$1') //wikilinks
+			.replace(/- ?\[.{1}?\]/gm,'') //tasks
+			.replace(/%%.*?%%/gm, '')//Obsidian Comments
+			.replace(/`([\s\S]*?)`/gm, '') //codeblocks, inline & normal
+			.replace(/\[\^[[\s\S]]*\]/g, '') //footnotes
+			.replace(/\^\[([\s\S]*?)\]/g, '$1') //inline footnotes
+			.replace(/\$\$([\s\S]*?)\$\$/gm, '') //LaTeX
+			.replace(/\$([\s\S]*?)\$/gm, '') //LaTeX inline
+			.replace(/<("[^"]*"|'[^']*'|[^'">])*>/gm, ''); //html (regex from: https://www.data2type.de/xml-xslt-xslfo/regulaere-ausdruecke/regex-methoden-aus-der-praxis/beispiele-zu-html/html-tags-erkennen)
 	}
 
 	removeStopwords(words: string[]): string[] {
@@ -123,26 +150,29 @@ export default class TagCloudPlugin extends Plugin {
 	async calculateWordDistribution() {
 		if (this.calculatingWordDistribution) return;
 		this.calculatingWordDistribution = true;
-		console.log("Calculating word distribution");
+		logger.debug("Calculating word distribution");
 		const files = this.app.vault.getMarkdownFiles();
-		console.log("will analyze %i files", files.length);
-		new Notice("Calculating word distribution");
+		logger.debug("will analyze %i files", files.length);
+		const notice = new Notice("Calculating word distribution", 100000000);
 
 		let fileCount = 0;
 		for (const file of files) {
+			if(this.quit) continue;
 			if (file === undefined) continue;
 
 			const fileContent = await this.app.vault.read(file);
 			const words = this.getWords(fileContent);
-			this.fileContentsWithStopwords = this.convertToMap(words);
+			this.fileContentsWithStopwords = new Map([...this.fileContentsWithStopwords, ...this.convertToMap(words)]);
 
 			const withoutStopWords = this.removeStopwords(words);
-			this.fileContentsWithoutStopwords = this.convertToMap(withoutStopWords);
+			this.fileContentsWithoutStopwords = new Map([...this.fileContentsWithoutStopwords, ...this.convertToMap(withoutStopWords)]);
 
 			fileCount++;
+			notice.setMessage(`Calculating word distribution (${fileCount.toLocaleString()} / ${files.length.toLocaleString()} files)`);
 		}
-		console.log("Finished calculating word distribution");
-		console.log("analyzed %i files", fileCount);
+		notice.hide();
+		logger.debug("Finished calculating word distribution");
+		logger.debug("analyzed %i files", fileCount);
 		new Notice("Finished calculating word distribution");
 		this.calculatingWordDistribution = false;
 	}
@@ -152,7 +182,7 @@ export default class TagCloudPlugin extends Plugin {
 	}
 
 	async onload() {
-		console.log("enabling Tag & Word cloud plugin");
+		logger.info("enabling Tag & Word cloud plugin");
 		await this.loadSettings();
 		this.addSettingTab(new TagCloudPluginSettingsTab(this));
 
@@ -177,200 +207,15 @@ export default class TagCloudPlugin extends Plugin {
 			},
 		})
 
-		this.registerMarkdownCodeBlockProcessor('wordcloud', async (source, el, ctx) => {
-			el.createEl('p').setText("generating tag cloud");
-
-			const options = this.parseCodeblockOptions(source);
-			if (options === undefined) {
-				el.createEl('p', {cls: "cloud-error"}).setText("An error has occurred while reading the options, please check the console");
-				return;
-			}
-
-			//TODO: remove after debugging issue on user side.
-			console.log(options);
-
-			let content: Map<string, number> = new Map<string, number>();
-
-			if (options.source === 'file') {
-				const file = this.app.vault.getAbstractFileByPath(ctx.sourcePath);
-				if (file === undefined) return;
-				if (!(file instanceof TFile)) return;
-
-				if (options.stopwords) {
-					content = this.convertToMap(this.removeStopwords(this.getWords(await this.app.vault.read(file))));
-				} else {
-					content = this.convertToMap(this.getWords(await this.app.vault.read(file)));
-				}
-			}
-			if (options.source === 'vault') {
-				if(this.fileContentsWithStopwords.size === 0) {
-					el.createEl("p", {cls: "cloud-error"}).setText("there is no content currently, try again later");
-				}
-				if (options.stopwords) {
-					content = this.fileContentsWithoutStopwords;
-				} else {
-					content = this.fileContentsWithStopwords;
-				}
-			}
-			if (options.source === 'query') {
-				el.createEl("p", {cls: "cloud-error"}).setText("Queries are not supported in a wordcloud");
-				return;
-			}
-			/*this part is really not performant, need to find a better solution.
-			if(options.source === 'query') {
-				const dataviewAPI = getAPI();
-				if(dataviewAPI === undefined) {
-					el.createEl("p").setText("Dataview is not installed, but is required to use queries");
-					return;
-				}
-
-				const pages = dataviewAPI.pages(options.query, ctx.sourcePath);
-				const words : string[] = [];
-				for (let page of pages) {
-					const file = this.app.vault.getAbstractFileByPath(page.file.path);
-					if (file === undefined) return;
-					if (!(file instanceof TFile)) return;
-					const fileContent = await this.app.vault.read(file);
-					words.push(...this.getWords(fileContent));
-				}
-				if(options.stopwords) {
-					content = this.convertToMap(this.removeStopwords(words));
-				}else {
-					content = this.convertToMap(words);
-				}
-			}*/
-
-			el.empty();
-
-			if(this.calculatingWordDistribution) {
-				el.createEl('p').setText('Word distribution is currently being calculated, reopen this note after calculation has finished');
-			}
-
-			//TODO: remove after debugging issue on user side.
-			console.log(content);
-
-			const canvas = el.createEl('canvas', {attr: {id: "wordcloud"}});
-			canvas.width = options.width;
-			canvas.height = options.height;
-
-			WordCloud(canvas, {
-				list: Array.from(content.entries()),
-				backgroundColor: options.backgroundColor,
-				color: options.color,
-				shape: options.shape,
-				weightFactor: options.weightFactor,
-				fontFamily: options.fontFamily,
-				fontWeight: options.fontWeight,
-				minSize: options.minFontSize,
-				minRotation: options.minRotation,
-				maxRotation: options.maxRotation,
-				ellipticity: options.ellipticity,
-				shuffle: options.shuffle,
-				rotateRatio: options.rotateRatio,
-			});
-		});
-
-		this.registerMarkdownCodeBlockProcessor('tagcloud', async (source, el, ctx) => {
-			el.createEl('p').setText("generating tag cloud");
-			const options = this.parseCodeblockOptions(source);
-
-			if (options === undefined) {
-				el.createEl('p', {cls: "cloud-error"}).setText("An error has occurred while reading the options, please check the console");
-				return;
-			}
-
-			//TODO: remove after debugging issue on user side.
-			console.log(options);
-
-			const tags: string[] = [];
-
-			if (options.source === 'file') {
-				const cache = this.app.metadataCache.getCache(ctx.sourcePath);
-				if(cache.tags) {
-					tags.push(...cache.tags.map(tag => tag.tag));
-				}
-				if(cache.frontmatter && cache.frontmatter.tags) {
-					tags.push(...cache.frontmatter.tags);
-				}
-			}
-			if (options.source === 'vault') {
-				//@ts-ignore
-				this.app.metadataCache.getCachedFiles().forEach(filename => {
-					const tmp = getAllTags(this.app.metadataCache.getCache(filename));
-					if (tmp && tmp.length > 0)
-						tags.push(...tmp);
-				});
-
-			}
-			if (options.source === 'query') {
-				const dataviewAPI = getAPI();
-				if (dataviewAPI === undefined) {
-					el.createEl("p", {cls: "cloud-error"}).setText("Dataview is not installed, but is required to use queries");
-					return;
-				}
-
-				let pages: any; // eslint-disable-line @typescript-eslint/no-explicit-any
-				try {
-					pages = dataviewAPI.pages(options.query, ctx.sourcePath);
-				} catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
-					el.createEl('p', {cls: "cloud-error"}).setText(error.toString());
-					console.error(error);
-					return;
-				}
-
-				for (const page of pages) {
-					tags.push(...page.file.tags);
-				}
-
-			}
-
-			const map = tags.map(t => t.replace('#', '')).reduce((acc, e) => acc.set(e, (acc.get(e) || 0) + 1), new Map());
-
-			//TODO: remove after debugging issue on user side.
-			console.log(map);
-
-			el.empty();
-
-			const canvas = el.createEl('canvas', {attr: {id: "tagcloud"}});
-			canvas.width = options.width;
-			canvas.height = options.height;
-
-			//@ts-ignore
-			const searchPlugin = this.app.internalPlugins.getPluginById("global-search");
-			const search = searchPlugin && searchPlugin.instance;
-
-			WordCloud(canvas, {
-				list: Array.from(map.entries()),
-				backgroundColor: options.backgroundColor,
-				color: options.color,
-				shape: options.shape,
-				weightFactor: options.weightFactor,
-				fontFamily: options.fontFamily,
-				fontWeight: options.fontWeight,
-				minSize: options.minFontSize,
-				minRotation: options.minRotation,
-				maxRotation: options.maxRotation,
-				ellipticity: options.ellipticity,
-				shuffle: options.shuffle,
-				rotateRatio: options.rotateRatio,
-				click: item => {
-					search.openGlobalSearch("tag: " + item[0]);
-				},
-				/*
-				hover: (item, dimension, event) => {
-					if(item !== undefined) {
-						console.log(item[0]);
-					}
-				}*/
-			});
-
-
-		});
+		this.registerMarkdownCodeBlockProcessor('wordcloud', new Wordcloud(this).processor);
+		this.registerMarkdownCodeBlockProcessor('tagcloud', new TagCloud(this).processor);
+		this.registerMarkdownCodeBlockProcessor('linkcloud', new LinkCloud(this).processor);
 
 	}
 
 	onunload() {
-		console.log("disabling Tag & Word cloud plugin");
+		this.quit = true;
+		logger.info("disabling Tag & Word cloud plugin");
 	}
 
 	async loadSettings() {

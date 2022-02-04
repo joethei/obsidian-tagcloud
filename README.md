@@ -29,6 +29,7 @@ Displays all tags that fit your selection.
 ## Word Cloud
 
 ![](https://i.joethei.space/7WCqI74ca8.png)
+
 a wordcloud displays all words in your vault/note.
 
 
@@ -39,18 +40,35 @@ a wordcloud displays all words in your vault/note.
 | stopwords | Remove all [stopwords](https://www.opinosis-analytics.com/knowledge-base/stop-words-explained/) from the result | `true`/ `false`     | `true`      |
 
 > ⚠ Word distribution will only be calculated when loading a vault and by running the `Recalculate Word Distribution` command.
+> 
+> This is because the calculation is computationally expensive and takes some time time.[^performance]
+
+## Link Cloud
+![](https://i.joethei.space/Obsidian_438TsZQC1w.png)
+
+A link cloud displays all links in your vault.
+
+This cloud can only be generated vault wide.
+
+### Options
+
+| **Name** | **Description**             | **Possible Values**              | **Default** |
+|----------|-----------------------------|----------------------------------|-------------|
+| type     | Which type of links to show | `resolved`, `unresolved`, `both` | `resolved`  |
+
 
 ## General Options
-The following options are supported for both the tag & word cloud.
+The following options are supported for all clouds.
 
 | **Name**    | **Description**                                 | **Possible Values**                                                                           | **Default**                            |
 |-------------|-------------------------------------------------|-----------------------------------------------------------------------------------------------|----------------------------------------|
 | shape       | What shape to draw                              | `circle`, `cardioid`, `diamond`, `square`, `triangle-forward`, `triangle`, `pentagon`, `star` | `circle`                               |
 | source      | where are the tags/words coming from?           | `file`, `vault`, `query`(only supported in tagcloud)                                          | `vault`                                |
-| weight      | factor by wich the size of a word is multiplied | any number                                                                                    | `2`                                    |
+| weight      | factor by wich the size of a word is multiplied | any positive number                                                                           | `2`                                    |
+| minCount    | Minumum number of occurances                    | any positive number                                                                           | '0'                                    |
 | background  | Background color                                | a hexadecimal RGB value                                                                       | background color from the chosen theme |
-| width       | Width of canvas                                 | any valid [CSS unit](https://developer.mozilla.org/docs/Web/CSS/length)                       | line width                             |
-| height      | Height of canvas                                | any valid [CSS unit](https://developer.mozilla.org/docs/Web/CSS/length)                       | `width / 2`                            |
+| width       | Width of canvas                                 | in pixels, (the `px` is omitted)                                                              | line width                             |
+| height      | Height of canvas                                | in pixels, (the `px` is omitted)                                                              | `width / 2`                            |
 | fontFamily  | font used to display                            | any valid [font-family](https://developer.mozilla.org/docs/Web/CSS/font-family)               |                                        |
 | fontWeight  | font weight                                     | `normal`, `bold`, or a number                                                                 | `normal`                               |
 | minFontSize | minumum font size                               | any number                                                                                    | `0`                                    |
@@ -59,6 +77,12 @@ The following options are supported for both the tag & word cloud.
 | ellipticity | degree of 'flatness'                            | number                                                                                        | `0.65`                                 |
 | shuffle     | produce a different looking result each time?   | `true`/`false`                                                                                | `true`                                 |
 | rotateRatio | Rotation Probability                            | Number as percentage	(so 1.0 is 100%)                                                         | `0.1`                                  |
+
+
+## Known issues
+
+- In some specific scenario the calculated width off the used `canvas` element is 0.
+	The plugin will fall back to a value of 500, which depending on the size of your obsidian window, might look strange.
 
 ---
 # Credits
@@ -71,3 +95,5 @@ The following options are supported for both the tag & word cloud.
 
 
 
+
+[^performance]: On a high-powered computer with a Vault that contains ~12.000 this takes 25 minutes.
