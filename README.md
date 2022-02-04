@@ -9,9 +9,9 @@ Plugin for [Obsidian](https://obsidian.md)
 ---
 
 
-With this plugin you can create a tag or word cloud in your notes.
+With this plugin you can create a tag, link or word cloud in your notes.
 
-To do this create a [codeblock](https://help.obsidian.md/How+to/Format+your+notes#Code+blocks) with the language set to either `tagcloud` or `wordcloud`.
+To do this create a [codeblock](https://help.obsidian.md/How+to/Format+your+notes#Code+blocks) with the language set to either `tagcloud`, `wordcloud` or `linkcloud`.
 
 You can configure your cloud using a [YAML](https://learnxinyminutes.com/docs/yaml/) syntax.
 
