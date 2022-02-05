@@ -65,7 +65,8 @@ The following options are supported for all clouds.
 | shape       | What shape to draw                              | `circle`, `cardioid`, `diamond`, `square`, `triangle-forward`, `triangle`, `pentagon`, `star` | `circle`                               |
 | source      | where are the tags/words coming from?           | `file`, `vault`, `query`(only supported in tagcloud)                                          | `vault`                                |
 | weight      | factor by wich the size of a word is multiplied | any positive number                                                                           | `2`                                    |
-| minCount    | Minumum number of occurances                    | any positive number                                                                           | '0'                                    |
+| shrinkToFit | Adjust word weight to make it fit               | `true`/`false`                                                                                | `true`                                 |
+| minCount    | Minumum number of occurances                    | any positive number                                                                           | `0`                                    |
 | background  | Background color                                | a hexadecimal RGB value                                                                       | background color from the chosen theme |
 | width       | Width of canvas                                 | in pixels, (the `px` is omitted)                                                              | line width                             |
 | height      | Height of canvas                                | in pixels, (the `px` is omitted)                                                              | `width / 2`                            |

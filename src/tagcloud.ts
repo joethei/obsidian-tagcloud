@@ -1,6 +1,5 @@
 import {getAllTags, MarkdownPostProcessorContext} from "obsidian";
 import {getAPI} from "obsidian-dataview";
-import WordCloud from "wordcloud";
 import TagCloudPlugin, {logger} from "./main";
 
 export class TagCloud {
@@ -65,37 +64,6 @@ export class TagCloud {
 
 		el.empty();
 
-		const canvas = el.createEl('canvas', {attr: {id: "tagcloud"}});
-		canvas.width = options.width;
-		canvas.height = options.height;
-
-		//@ts-ignore
-		const searchPlugin = this.plugin.app.internalPlugins.getPluginById("global-search");
-		const search = searchPlugin && searchPlugin.instance;
-
-		WordCloud(canvas, {
-			list: filtered,
-			backgroundColor: options.backgroundColor,
-			color: options.color,
-			shape: options.shape,
-			weightFactor: options.weightFactor,
-			fontFamily: options.fontFamily,
-			fontWeight: options.fontWeight,
-			minSize: options.minFontSize,
-			minRotation: options.minRotation,
-			maxRotation: options.maxRotation,
-			ellipticity: options.ellipticity,
-			shuffle: options.shuffle,
-			rotateRatio: options.rotateRatio,
-			click: item => {
-				search.openGlobalSearch("tag: " + item[0]);
-			},
-			/*
-			hover: (item, dimension, event) => {
-				if(item !== undefined) {
-					console.log(item[0]);
-				}
-			}*/
-		});
+		this.plugin.generateCloud(filtered, options, el, "tag:");
 	}
 }

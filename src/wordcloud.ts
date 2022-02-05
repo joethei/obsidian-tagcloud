@@ -1,6 +1,5 @@
-import TagCloudPlugin, {logger} from "./main";
+import TagCloudPlugin from "./main";
 import {MarkdownPostProcessorContext, TFile} from "obsidian";
-import WordCloud from "wordcloud";
 
 export class Wordcloud {
 	plugin: TagCloudPlugin;
@@ -70,12 +69,9 @@ export class Wordcloud {
 			}
 		}*/
 
-		logger.debug("not filtered ", content);
-
 		const filtered = Array.from(content.entries()).filter(([_, v]) => {
 			return v >= options.minCount;
 		});
-		logger.debug("filtered elements", filtered);
 
 		el.empty();
 
@@ -83,31 +79,6 @@ export class Wordcloud {
 			el.createEl('p').setText('Word distribution is currently being calculated, reopen this note after calculation has finished');
 		}
 
-		const canvas = el.createEl('canvas', {attr: {id: "wordcloud"}});
-		canvas.width = options.width;
-		canvas.height = options.height;
-
-		//@ts-ignore
-		const searchPlugin = this.plugin.app.internalPlugins.getPluginById("global-search");
-		const search = searchPlugin && searchPlugin.instance;
-
-		WordCloud(canvas, {
-			list: filtered,
-			backgroundColor: options.backgroundColor,
-			color: options.color,
-			shape: options.shape,
-			weightFactor: options.weightFactor,
-			fontFamily: options.fontFamily,
-			fontWeight: options.fontWeight,
-			minSize: options.minFontSize,
-			minRotation: options.minRotation,
-			maxRotation: options.maxRotation,
-			ellipticity: options.ellipticity,
-			shuffle: options.shuffle,
-			rotateRatio: options.rotateRatio,
-			click: item => {
-				search.openGlobalSearch(item[0]);
-			},
-		});
+		this.plugin.generateCloud(filtered, options, el, "");
 	}
 }

@@ -1,6 +1,5 @@
 import {MarkdownPostProcessorContext} from "obsidian";
 import TagCloudPlugin from "./main";
-import WordCloud from "wordcloud";
 
 export class LinkCloud {
 	plugin: TagCloudPlugin;
@@ -62,31 +61,6 @@ export class LinkCloud {
 			return;
 		}
 
-		const canvas = el.createEl('canvas', {attr: {id: "tagcloud"}});
-		canvas.width = options.width;
-		canvas.height = options.height;
-
-		//@ts-ignore
-		const searchPlugin = this.plugin.app.internalPlugins.getPluginById("global-search");
-		const search = searchPlugin && searchPlugin.instance;
-
-		WordCloud(canvas, {
-			list: Array.from(finalMap.entries()),
-			backgroundColor: options.backgroundColor,
-			color: options.color,
-			shape: options.shape,
-			weightFactor: options.weightFactor,
-			fontFamily: options.fontFamily,
-			fontWeight: options.fontWeight,
-			minSize: options.minFontSize,
-			minRotation: options.minRotation,
-			maxRotation: options.maxRotation,
-			ellipticity: options.ellipticity,
-			shuffle: options.shuffle,
-			rotateRatio: options.rotateRatio,
-			click: item => {
-				search.openGlobalSearch("file:" + item[0]);
-			},
-		});
+		this.plugin.generateCloud(Array.from(finalMap.entries()), options, el, "file:");
 	}
 }

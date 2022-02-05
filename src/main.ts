@@ -29,6 +29,7 @@ export interface CodeblockOptions {
 	query: string,
 	minCount: number,
 	type: 'unresolved' | 'resolved' | 'both';
+	shrinkToFit: boolean,
 }
 
 export default class TagCloudPlugin extends Plugin {
@@ -103,7 +104,8 @@ export default class TagCloudPlugin extends Plugin {
 			rotateRatio: yaml.rotateRatio ? yaml.rotateRatio : 0.1,
 			query: yaml.query,
 			minCount: yaml.minCount ? yaml.minCount : 0,
-			type: yaml.type ? yaml.type : 'resolved'
+			type: yaml.type ? yaml.type : 'resolved',
+			shrinkToFit: yaml.shrinkToFit ? yaml.shrinkToFit : true,
 		}
 	}
 
@@ -184,6 +186,43 @@ export default class TagCloudPlugin extends Plugin {
 
 	convertToMap(words: string[]): Map<string, number> {
 		return words.reduce((acc, e) => acc.set(e, (acc.get(e) || 0) + 1), new Map());
+	}
+
+
+	generateCloud(values: [string,number][], options: CodeblockOptions, el: HTMLElement, searchPrefix: string) {
+
+		const filtered = values.filter(([_, value]) => {
+			return value >= options.minCount;
+		});
+
+		const canvas = el.createEl('canvas', {attr: {cls: "cloud"}});
+		canvas.width = options.width;
+		canvas.height = options.height;
+
+		//@ts-ignore
+		const searchPlugin = this.app.internalPlugins.getPluginById("global-search");
+		const search = searchPlugin && searchPlugin.instance;
+
+		WordCloud(canvas, {
+			list: filtered,
+			backgroundColor: options.backgroundColor,
+			color: options.color,
+			shape: options.shape,
+			weightFactor: options.weightFactor,
+			fontFamily: options.fontFamily,
+			fontWeight: options.fontWeight,
+			minSize: options.minFontSize,
+			minRotation: options.minRotation,
+			maxRotation: options.maxRotation,
+			ellipticity: options.ellipticity,
+			shuffle: options.shuffle,
+			rotateRatio: options.rotateRatio,
+			//@ts-ignore
+			shrinkToFit: options.shrinkToFit,
+			click: item => {
+				search.openGlobalSearch(searchPrefix + item[0]);
+			},
+		});
 	}
 
 	async onload() {
