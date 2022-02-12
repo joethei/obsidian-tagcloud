@@ -1,7 +1,6 @@
 import esbuild from "esbuild";
 import process from "process";
 import builtins from 'builtin-modules'
-import inlineWorkerPlugin from "esbuild-plugin-inline-worker";
 
 const banner =
 `/*
@@ -18,7 +17,6 @@ esbuild.build({
 		js: banner,
 	},
 	entryPoints: ['src/main.ts'],
-	plugins: [inlineWorkerPlugin()],
 	bundle: true,
 	external: [
 		'obsidian',
