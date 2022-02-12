@@ -1,4 +1,4 @@
-## Tag & Word Cloud
+## Tag, Word & Link Cloud
 
 Plugin for [Obsidian](https://obsidian.md)
 
