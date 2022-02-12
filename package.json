@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-tag-cloud",
-	"version": "1.2.0",
+	"version": "1.3.0",
 	"description": "Show a cloud of your tags/words in a note",
 	"main": "main.js",
 	"scripts": {
@@ -27,6 +27,7 @@
 		"stopword": "^1.0.11",
 		"@types/stopword": "^1.0.2",
 		"obsidian-dataview":  "^0.4.22",
-		"typescript-logger": "^5.0.1"
+		"typescript-logger": "^5.0.1",
+		"stopwords-iso": "^1.1.0"
 	}
 }

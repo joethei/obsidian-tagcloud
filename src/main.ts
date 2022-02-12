@@ -1,11 +1,12 @@
 import {Notice, parseYaml, Plugin} from 'obsidian';
 import WordCloud from "wordcloud";
-import stopword from "stopword";
 import {DEFAULT_SETTINGS, TagCloudPluginSettings, TagCloudPluginSettingsTab} from "./settings";
 import {LoggerManager} from "typescript-logger";
 import {TagCloud} from "./tagcloud";
 import {Wordcloud} from "./wordcloud";
 import {LinkCloud} from "./linkcloud";
+import {convertToMap, getWords, mergeMaps, removeStopwords, stopwords} from "./functions";
+import stopword from "stopword";
 
 export const logger = LoggerManager.create("Tag & Word Cloud");
 
@@ -30,14 +31,20 @@ export interface CodeblockOptions {
 	minCount: number,
 	type: 'unresolved' | 'resolved' | 'both';
 	shrinkToFit: boolean,
+	maxDepth: number,
+}
+
+type MergeTask = {
+	map1: Record<string, number>,
+	map2: Record<string, number>
 }
 
 export default class TagCloudPlugin extends Plugin {
 	settings: TagCloudPluginSettings;
 
 	//caches for word frequency
-	fileContentsWithStopwords: Map<string, number> = new Map<string, number>();
-	fileContentsWithoutStopwords: Map<string, number> = new Map<string, number>();
+	fileContentsWithStopwords: Record<string, number> = {};
+	fileContentsWithoutStopwords: Record<string, number> = {};
 
 	//guard against running the word frequency calculation simultaneously
 	calculatingWordDistribution = false;
@@ -62,7 +69,7 @@ export default class TagCloudPlugin extends Plugin {
 
 		let width = yaml.width ? yaml.width : max_width;
 		//fallback if this somehow is empty
-		if(width <= 0) {
+		if (width <= 0) {
 			logger.warn("width is not defined, using fallback value");
 			width = 500;
 		}
@@ -106,52 +113,8 @@ export default class TagCloudPlugin extends Plugin {
 			minCount: yaml.minCount ? yaml.minCount : 0,
 			type: yaml.type ? yaml.type : 'resolved',
 			shrinkToFit: yaml.shrinkToFit ? yaml.shrinkToFit : true,
+			maxDepth: yaml.maxDepth ? yaml.maxDepth : 50,
 		}
-	}
-
-	//original code taken from: https://gist.github.com/chrisgrieser/ac16a80cdd9e8e0e84606cc24e35ad99
-	removeMarkdown(text: string): string {
-		return text
-			.replace(/^---\n.*?\n---\n/s, '') // YAML Frontmatter
-			.replace(/!?\[(.+)\]\(.+\)/g, '$1') // URLs & Images, we do want to keep the contents of the alias
-			.replace(/__(.*?)__/gm, '$1') //bold
-			.replace(/_(.*?)_/gm, '$1') //italic
-			.replace(/==(.*?)==/gm, '$1') //highlights
-			.replace(/\*\*(.*?)\*\*/gm, '$1') //bold
-			.replace(/\*(.*?)\*/gm, '$1') //italic
-			.replace(/#/g, '') //headers
-			.replace(/-/g, '') //lists
-			.replace(/\[\[(.*(?=\|))(.*)\]\]/g, '$2') //wikilinks with alias
-			.replace(/\[\[([\s\S]*?)\]\]/gm, '$1') //wikilinks
-			.replace(/- ?\[.?\]/gm,'') //tasks
-			.replace(/%%.*?%%/gm, '')//Obsidian Comments
-			.replace(/`([\s\S]*?)`/gm, '') //codeblocks, inline & normal
-			.replace(/\[\^[[\s\S]]*\]/g, '') //footnotes
-			.replace(/\^\[([\s\S]*?)\]/g, '$1') //inline footnotes
-			.replace(/\$\$([\s\S]*?)\$\$/gm, '') //LaTeX
-			.replace(/\$([\s\S]*?)\$/gm, '') //LaTeX inline
-			.replace(/\[([\s\S]*?)\]/g, '$1')//normal brackets[]
-			.replace(/\(([\s\S]*?)\)/g, '$1')//normal brackets()
-			.replace(/^(.*?)::(.*?)$/gm, '') //dataview inline attributes
-			.replace(/[,;:|]/g, '')
-			.replace(/<("[^"]*"|'[^']*'|[^'">])*>/gm, '') //html (regex from: https://www.data2type.de/xml-xslt-xslfo/regulaere-ausdruecke/regex-methoden-aus-der-praxis/beispiele-zu-html/html-tags-erkennen)
-			.replace(/\s\S\s/g, ' '); //single chars
-	}
-
-
-	removeStopwords(words: string[]): string[] {
-		const customStopwords = this.settings ? this.settings.stopwords.toLowerCase().split("\n") : [];
-		const stopwords: string[] = [];
-		Object.entries(stopword).forEach(stopword => {
-			if (stopword[0] !== "removeStopwords")
-				stopwords.push(...stopword[1]);
-		});
-		return stopword.removeStopwords(words, [...stopwords, ...customStopwords]);
-	}
-
-	getWords(text: string): string[] {
-		const tmp = this.removeMarkdown(text);
-		return tmp.split(/[\n\s]/g).map(word => word.toLocaleLowerCase());
 	}
 
 	async calculateWordDistribution() {
@@ -160,23 +123,63 @@ export default class TagCloudPlugin extends Plugin {
 		logger.debug("Calculating word distribution");
 		const files = this.app.vault.getMarkdownFiles();
 		logger.debug("will analyze %i files", files.length);
-		const notice = new Notice("Calculating word distribution", 100000000);
 
+		//we don't care what file has changed since the last scan, since we do need to go through all files regardless to build the full cache.
+		const now = Date.now();
+		let cacheUpToDate = true;
+		for(const file of files) {
+			if(file.stat.mtime > now) {
+				cacheUpToDate = false;
+			}
+		}
+
+		if (this.settings.wordCache && cacheUpToDate && this.settings.wordCache.timestamp !== 0) {
+			this.fileContentsWithStopwords = this.settings.wordCache.withStopwords;
+			this.fileContentsWithoutStopwords = this.settings.wordCache.withoutStopwords;
+			this.calculatingWordDistribution = false;
+			return;
+		}
+
+		const notice = new Notice("Calculating word distribution", 100000000);
 		let fileCount = 0;
+
+		if (!this.settings.filecache) {
+			this.settings.filecache = DEFAULT_SETTINGS.filecache;
+		}
+
 		for (const file of files) {
-			if(this.quit) continue;
+			if (this.quit) continue;
 			if (file === undefined) continue;
 
-			const fileContent = await this.app.vault.read(file);
-			const words = this.getWords(fileContent);
-			this.fileContentsWithStopwords = new Map([...this.fileContentsWithStopwords, ...this.convertToMap(words)]);
+			const fileCache = this.settings.filecache[file.path];
+			if (fileCache && fileCache.timestamp >= file.stat.mtime && fileCache.timestamp !== 0) {
+				this.fileContentsWithStopwords = await mergeMaps(this.fileContentsWithStopwords, fileCache.withStopwords);
+				this.fileContentsWithoutStopwords = await mergeMaps(this.fileContentsWithoutStopwords, fileCache.withoutStopwords);
+			} else {
+				const fileContent = await this.app.vault.read(file);
+				const words = await getWords(fileContent);
+				const withStopwords = await convertToMap(words);
+				this.fileContentsWithStopwords = await mergeMaps(this.fileContentsWithStopwords, withStopwords);
 
-			const withoutStopWords = this.removeStopwords(words);
-			this.fileContentsWithoutStopwords = new Map([...this.fileContentsWithoutStopwords, ...this.convertToMap(withoutStopWords)]);
+				const withoutStopwords = removeStopwords(withStopwords);
+				this.fileContentsWithoutStopwords = await mergeMaps(this.fileContentsWithoutStopwords, withoutStopwords);
+
+				this.settings.filecache[file.path] = {
+					withStopwords: withStopwords,
+					withoutStopwords: withoutStopwords,
+					timestamp: file.stat.mtime,
+				};
+			}
 
 			fileCount++;
 			notice.setMessage(`Calculating word distribution (${fileCount.toLocaleString()} / ${files.length.toLocaleString()} files)`);
 		}
+		this.settings.wordCache = {
+			withStopwords: this.fileContentsWithStopwords,
+			withoutStopwords: this.fileContentsWithoutStopwords,
+			timestamp: Date.now(),
+		};
+		await this.saveSettings();
 		notice.hide();
 		logger.debug("Finished calculating word distribution");
 		logger.debug("analyzed %i files", fileCount);
@@ -184,16 +187,29 @@ export default class TagCloudPlugin extends Plugin {
 		this.calculatingWordDistribution = false;
 	}
 
-	convertToMap(words: string[]): Map<string, number> {
-		return words.reduce((acc, e) => acc.set(e, (acc.get(e) || 0) + 1), new Map());
-	}
-
-
-	generateCloud(values: [string,number][], options: CodeblockOptions, el: HTMLElement, searchPrefix: string) {
-
+	generateCloud(values: [string, number][], options: CodeblockOptions, el: HTMLElement, searchPrefix: string) {
 		const filtered = values.filter(([_, value]) => {
 			return value >= options.minCount;
 		});
+		const sorted = filtered.sort((a, b) => {
+			if(a[1] < b[1]) return 1;
+			if(a[1] > b[1]) return -1;
+			return 0;
+		});
+
+		const tmp: [string, number][] = [];
+		let last = Infinity;
+		let i = options.maxDepth;
+		for (let sortedElement of sorted) {
+			if(i <= 0) {
+				break;
+			}
+			if(sortedElement[1] < last) {
+				last = sortedElement[1];
+				i--;
+			}
+			tmp.push([sortedElement[0], i]);
+		}
 
 		const canvas = el.createEl('canvas', {attr: {cls: "cloud"}});
 		canvas.width = options.width;
@@ -204,7 +220,7 @@ export default class TagCloudPlugin extends Plugin {
 		const search = searchPlugin && searchPlugin.instance;
 
 		WordCloud(canvas, {
-			list: filtered,
+			list: tmp,
 			backgroundColor: options.backgroundColor,
 			color: options.color,
 			shape: options.shape,
@@ -230,13 +246,18 @@ export default class TagCloudPlugin extends Plugin {
 		await this.loadSettings();
 		this.addSettingTab(new TagCloudPluginSettingsTab(this));
 
+		Object.entries(stopword).forEach(stopword => {
+			if (stopword[0] !== "removeStopwords")
+				stopwords.add(stopword[0]);
+		});
+
 		if (!WordCloud.isSupported) {
 			new Notice("the Word & Tag cloud plugin is not compatible with your device");
 			throw Error("the tag cloud plugin is not supported on your device");
 		}
 
 		this.app.workspace.onLayoutReady(async () => {
-			await this.calculateWordDistribution();
+			setTimeout(async () => await this.calculateWordDistribution(), 5000);
 		});
 
 		this.addCommand({
@@ -255,6 +276,11 @@ export default class TagCloudPlugin extends Plugin {
 		this.registerMarkdownCodeBlockProcessor('tagcloud', new TagCloud(this).processor);
 		this.registerMarkdownCodeBlockProcessor('linkcloud', new LinkCloud(this).processor);
 
+	}
+
+	async mergeWorker(arg: MergeTask): Promise<Record<string, number>> {
+		const result = await mergeMaps(arg.map1, arg.map2);
+		return Promise.resolve(result);
 	}
 
 	onunload() {

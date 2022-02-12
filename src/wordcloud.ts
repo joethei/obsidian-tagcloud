@@ -1,5 +1,6 @@
 import TagCloudPlugin from "./main";
 import {MarkdownPostProcessorContext, TFile} from "obsidian";
+import {convertToMap, getWords, recordToArray, removeStopwords} from "./functions";
 
 export class Wordcloud {
 	plugin: TagCloudPlugin;
@@ -18,7 +19,7 @@ export class Wordcloud {
 			return;
 		}
 
-		let content: Map<string, number> = new Map<string, number>();
+		let content: Record<string, number> = {};
 
 		if (options.source === 'file') {
 			const file = this.plugin.app.vault.getAbstractFileByPath(ctx.sourcePath);
@@ -26,9 +27,9 @@ export class Wordcloud {
 			if (!(file instanceof TFile)) return;
 
 			if (options.stopwords) {
-				content = this.plugin.convertToMap(this.plugin.removeStopwords(this.plugin.getWords(await this.plugin.app.vault.read(file))));
+				content = removeStopwords(await convertToMap(await getWords(await this.plugin.app.vault.read(file))));
 			} else {
-				content = this.plugin.convertToMap(this.plugin.getWords(await this.plugin.app.vault.read(file)));
+				content = await convertToMap(await getWords(await this.plugin.app.vault.read(file)));
 			}
 		}
 		if (options.source === 'vault') {
@@ -69,16 +70,12 @@ export class Wordcloud {
 			}
 		}*/
 
-		const filtered = Array.from(content.entries()).filter(([_, v]) => {
-			return v >= options.minCount;
-		});
-
 		el.empty();
 
 		if (this.plugin.calculatingWordDistribution) {
 			el.createEl('p').setText('Word distribution is currently being calculated, reopen this note after calculation has finished');
 		}
-
-		this.plugin.generateCloud(filtered, options, el, "");
+		const data = await recordToArray(content);
+		this.plugin.generateCloud(data, options, el, "");
 	}
 }
