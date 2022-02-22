@@ -73,6 +73,7 @@ query: '[[Other note]]'
 | **Name** | **Description**                                                                                                | **Possible Values**                                                                        |
 |----------|----------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------|
 | query    | Requires [Dataview](https://github.com/blacksmithgu/obsidian-dataview), requires `source` to be set to `query` | A valid [Dataview Source](https://blacksmithgu.github.io/obsidian-dataview/query/sources/) |
+
 All other options from [here](#general-options) still apply
 
 ## Word Cloud
@@ -108,6 +109,7 @@ source: file
 | **Name**  | **Description**                                                                                                 | **Possible Values** | **Default** |
 |-----------|-----------------------------------------------------------------------------------------------------------------|---------------------|-------------|
 | stopwords | Remove all [stopwords](https://www.opinosis-analytics.com/knowledge-base/stop-words-explained/) from the result | `true`/ `false`     | `true`      |
+
 All other options from [here](#general-options) still apply
 
 ## Link Cloud
@@ -147,6 +149,7 @@ type: unresolved
 | **Name** | **Description**             | **Possible Values**              | **Default** |
 |----------|-----------------------------|----------------------------------|-------------|
 | type     | Which type of links to show | `resolved`, `unresolved`, `both` | `resolved`  |
+
 The following options also apply.
 
 
