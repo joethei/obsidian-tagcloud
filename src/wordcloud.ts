@@ -1,6 +1,7 @@
 import TagCloudPlugin from "./main";
 import {MarkdownPostProcessorContext, TFile} from "obsidian";
 import {convertToMap, getWords, recordToArray, removeStopwords} from "./functions";
+import WordCloud from "wordcloud";
 
 export class Wordcloud {
 	plugin: TagCloudPlugin;
@@ -11,6 +12,10 @@ export class Wordcloud {
 
 	public processor = async(source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) : Promise<void> => {
 		el.createEl('p').setText("generating word cloud");
+
+		if(!WordCloud.isSupported) {
+			el.createEl("p", {cls: "cloud-error", text: "Your device is not supported"});
+		}
 
 		const options = this.plugin.parseCodeblockOptions(source);
 

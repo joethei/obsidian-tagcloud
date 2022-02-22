@@ -53,18 +53,13 @@ export default class TagCloudPlugin extends Plugin {
 	parseCodeblockOptions(source: string): CodeblockOptions | undefined {
 		const yaml = source ? parseYaml(source) : {};
 
-		const previewBlock = getComputedStyle(
-			document.querySelector(
-				'.markdown-preview-view.is-readable-line-width .markdown-preview-sizer'
-			));
-		if (previewBlock === undefined) {
-			logger.error("Preview block is undefined");
-			return undefined;
-		}
+		let max_width = 0;
 
-		const max_width = document.querySelectorAll(
-			'.markdown-preview-view.is-readable-line-width .markdown-preview-sizer, .cm-content'
-		)[0].clientWidth;
+		document.querySelectorAll('.markdown-preview-view.is-readable-line-width .markdown-preview-sizer, .cm-content').forEach(el => {
+			if(el.clientWidth !== 0) {
+				max_width = el.clientWidth;
+			}
+		});
 
 
 		let width = yaml.width ? yaml.width : max_width;
@@ -113,7 +108,7 @@ export default class TagCloudPlugin extends Plugin {
 			minCount: yaml.minCount ? yaml.minCount : 0,
 			type: yaml.type ? yaml.type : 'resolved',
 			shrinkToFit: yaml.shrinkToFit ? yaml.shrinkToFit : true,
-			maxDepth: yaml.maxDepth ? yaml.maxDepth : 50,
+			maxDepth: yaml.maxDepth ? yaml.maxDepth : 25,
 		}
 	}
 
@@ -267,7 +262,8 @@ export default class TagCloudPlugin extends Plugin {
 				if (checking) return !this.calculatingWordDistribution;
 
 				(async () => {
-					await this.calculateWordDistribution()
+					await this.calculateWordDistribution();
+					new Notice("calculated word distribution");
 				})();
 			},
 		})

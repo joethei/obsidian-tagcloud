@@ -20,11 +20,60 @@ You can configure your cloud using a [YAML](https://learnxinyminutes.com/docs/ya
 
 Displays all tags that fit your selection.
 
+### Examples
+
+#### Show all tags in the entire vault
+
+~~~markdown
+```tagcloud
+```
+~~~
+
+#### Show all tags in the current file
+
+~~~markdown
+```tagcloud
+source: file
+```
+~~~
+
+#### Show all tags from a folder/file.
+> ⚠️ Requires Dataview
+
+~~~markdown
+```tagcloud
+source: query
+query: Folder/File
+```
+~~~
+
+#### Show all tags that show up together with our tag.
+> ⚠️ Requires Dataview
+
+~~~markdown
+```tagcloud
+source: query
+query: '#yourTag'
+```
+~~~
+
+#### Show all tags from notes that link to note.
+> ⚠️  Requires Dataview
+
+~~~markdown
+```tagcloud
+source: query
+query: '[[Other note]]'
+```
+~~~
+
+
 ### Options
 
 | **Name** | **Description**                                                                                                | **Possible Values**                                                                        |
 |----------|----------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------|
 | query    | Requires [Dataview](https://github.com/blacksmithgu/obsidian-dataview), requires `source` to be set to `query` | A valid [Dataview Source](https://blacksmithgu.github.io/obsidian-dataview/query/sources/) |
+All other options from [here](#general-options) still apply
 
 ## Word Cloud
 
@@ -33,15 +82,33 @@ Displays all tags that fit your selection.
 a wordcloud displays all words in your vault/note.
 
 
+> ⚠ Word distribution will only be calculated when loading a vault and by running the `Recalculate Word Distribution` command.
+>
+> This is because the calculation is computationally expensive and takes some time.[^performance]
+
+### Examples
+
+#### Show all words in the entire vault
+
+~~~markdown
+```wordcloud
+```
+~~~
+
+#### Show all words in the current file
+
+~~~markdown
+```wordcloud
+source: file
+```
+~~~
+
 ### Options
 
 | **Name**  | **Description**                                                                                                 | **Possible Values** | **Default** |
 |-----------|-----------------------------------------------------------------------------------------------------------------|---------------------|-------------|
 | stopwords | Remove all [stopwords](https://www.opinosis-analytics.com/knowledge-base/stop-words-explained/) from the result | `true`/ `false`     | `true`      |
-
-> ⚠ Word distribution will only be calculated when loading a vault and by running the `Recalculate Word Distribution` command.
-> 
-> This is because the calculation is computationally expensive and takes some time.[^performance]
+All other options from [here](#general-options) still apply
 
 ## Link Cloud
 ![](https://i.joethei.space/Obsidian_438TsZQC1w.png)
@@ -50,11 +117,37 @@ A link cloud displays all links in your vault.
 
 This cloud can only be generated vault wide.
 
+### Examples
+
+#### Show all links
+
+~~~markdown
+```linkcloud
+```
+~~~
+
+#### Show all links to existing files
+
+~~~markdown
+```linkcloud
+type: resolved
+```
+~~~
+
+#### Show all links to non-existing files
+
+~~~markdown
+```linkcloud
+type: unresolved
+```
+~~~
+
 ### Options
 
 | **Name** | **Description**             | **Possible Values**              | **Default** |
 |----------|-----------------------------|----------------------------------|-------------|
 | type     | Which type of links to show | `resolved`, `unresolved`, `both` | `resolved`  |
+The following options also apply.
 
 
 ## General Options
@@ -67,7 +160,7 @@ The following options are supported for all clouds.
 | weight      | factor by wich the size of a word is multiplied                                                                  | any positive integer                                                                                                        | `2`                                    |
 | shrinkToFit | Adjust word weight to make it fit                                                                                | `true`/`false`                                                                                                              | `true`                                 |
 | minCount    | Minumum number of occurances                                                                                     | any positive integer                                                                                                        | `0`                                    |
-| maxDepth    | Only show the X most used elements(if two elements have the same number of occurrences only one will be counted) | any positive integer (increasing this number may result in the cloud not showing, as only so many elements can be rendered) | `50`                                   |
+| maxDepth    | Only show the X most used elements(if two elements have the same number of occurrences only one will be counted) | any positive integer (increasing this number may result in the cloud not showing, as only so many elements can be rendered) | `25`                                   |
 | background  | Background color                                                                                                 | a hexadecimal RGB value                                                                                                     | background color from the chosen theme |
 | width       | Width of canvas                                                                                                  | in pixels (the `px` is omitted)                                                                                             | line width                             |
 | height      | Height of canvas                                                                                                 | in pixels (the `px` is omitted)                                                                                             | `width / 2`                            |

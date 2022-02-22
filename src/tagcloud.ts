@@ -1,6 +1,7 @@
 import {getAllTags, MarkdownPostProcessorContext} from "obsidian";
 import {getAPI} from "obsidian-dataview";
 import TagCloudPlugin, {logger} from "./main";
+import WordCloud from "wordcloud";
 
 export class TagCloud {
 	plugin: TagCloudPlugin;
@@ -11,6 +12,11 @@ export class TagCloud {
 
 	public processor = async(source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) : Promise<void> => {
 		el.createEl('p').setText("generating tag cloud");
+
+		if(!WordCloud.isSupported) {
+			el.createEl("p", {cls: "cloud-error", text: "Your device is not supported"});
+		}
+
 		const options = this.plugin.parseCodeblockOptions(source);
 
 		if (options === undefined) {
@@ -47,7 +53,15 @@ export class TagCloud {
 
 			let pages: any; // eslint-disable-line @typescript-eslint/no-explicit-any
 			try {
-				pages = dataviewAPI.pages(options.query, ctx.sourcePath);
+				let query = options.query;
+				if(!query) {
+					el.createEl('p', {cls: "cloud-error"}).setText("query option is required");
+					return;
+				}
+				if(!query.match(/[\[#]/)) {
+					query = '"' + options.query + '"';
+				}
+				pages = dataviewAPI.pages(query, ctx.sourcePath);
 			} catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
 				el.createEl('p', {cls: "cloud-error"}).setText(error.toString());
 				logger.error(error);

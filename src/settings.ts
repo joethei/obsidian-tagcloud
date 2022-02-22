@@ -1,5 +1,6 @@
 import TagCloudPlugin from "./main";
 import {PluginSettingTab, Setting} from "obsidian";
+import WordCloud from "wordcloud";
 
 export interface WordsCache {
 	withStopwords: Record<string, number>;
@@ -34,6 +35,10 @@ export class TagCloudPluginSettingsTab extends PluginSettingTab{
 		const {containerEl} = this;
 
 		containerEl.empty();
+
+		if(!WordCloud.isSupported) {
+			containerEl.createEl("p", {cls: "cloud-error", text: "Your device is not supported"});
+		}
 
 		containerEl.createEl('h1', {text: 'Tag & Word Cloud Settings'});
 

@@ -1,5 +1,6 @@
 import {MarkdownPostProcessorContext} from "obsidian";
 import TagCloudPlugin from "./main";
+import WordCloud from "wordcloud";
 
 export class LinkCloud {
 	plugin: TagCloudPlugin;
@@ -24,6 +25,11 @@ export class LinkCloud {
 
 	public processor = async(source: string, el: HTMLElement, _: MarkdownPostProcessorContext) : Promise<void> => {
 		el.createEl('p').setText("generating link cloud");
+
+		if(!WordCloud.isSupported) {
+			el.createEl("p", {cls: "cloud-error", text: "Your device is not supported"});
+		}
+
 		const options = this.plugin.parseCodeblockOptions(source);
 
 		if (options === undefined) {
