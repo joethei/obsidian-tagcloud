@@ -108,12 +108,15 @@ export default class TagCloudPlugin extends Plugin {
 			minCount: yaml.minCount ? yaml.minCount : 0,
 			type: yaml.type ? yaml.type : 'resolved',
 			shrinkToFit: yaml.shrinkToFit ? yaml.shrinkToFit : true,
-			maxDepth: yaml.maxDepth ? yaml.maxDepth : 25,
+			maxDepth: yaml.maxDepth ? yaml.maxDepth : 15,
 		}
 	}
 
-	async calculateWordDistribution() {
-		if (this.calculatingWordDistribution) return;
+	async calculateWordDistribution(fresh: boolean = false) {
+		if (this.calculatingWordDistribution) {
+			new Notice("Word distribution is already beeing calculated");
+			return;
+		}
 		this.calculatingWordDistribution = true;
 		logger.debug("Calculating word distribution");
 		const files = this.app.vault.getMarkdownFiles();
@@ -127,6 +130,14 @@ export default class TagCloudPlugin extends Plugin {
 				cacheUpToDate = false;
 			}
 		}
+
+		if(fresh) {
+			cacheUpToDate = false;
+			this.settings.wordCache = null;
+			this.settings.filecache = null;
+		}
+
+		await this.saveSettings();
 
 		if (this.settings.wordCache && cacheUpToDate && this.settings.wordCache.timestamp !== 0) {
 			this.fileContentsWithStopwords = this.settings.wordCache.withStopwords;
@@ -142,6 +153,10 @@ export default class TagCloudPlugin extends Plugin {
 			this.settings.filecache = DEFAULT_SETTINGS.filecache;
 		}
 
+		const tmp = this.settings.stopwords.split("\n");
+		const customStopwords = new Set<string>(tmp);
+		console.log(customStopwords);
+
 		for (const file of files) {
 			if (this.quit) continue;
 			if (file === undefined) continue;
@@ -156,7 +171,7 @@ export default class TagCloudPlugin extends Plugin {
 				const withStopwords = await convertToMap(words);
 				this.fileContentsWithStopwords = await mergeMaps(this.fileContentsWithStopwords, withStopwords);
 
-				const withoutStopwords = removeStopwords(withStopwords);
+				const withoutStopwords = removeStopwords(withStopwords, customStopwords);
 				this.fileContentsWithoutStopwords = await mergeMaps(this.fileContentsWithoutStopwords, withoutStopwords);
 
 				this.settings.filecache[file.path] = {
@@ -262,11 +277,11 @@ export default class TagCloudPlugin extends Plugin {
 				if (checking) return !this.calculatingWordDistribution;
 
 				(async () => {
-					await this.calculateWordDistribution();
+					await this.calculateWordDistribution(true);
 					new Notice("calculated word distribution");
 				})();
 			},
-		})
+		});
 
 		this.registerMarkdownCodeBlockProcessor('wordcloud', new Wordcloud(this).processor);
 		this.registerMarkdownCodeBlockProcessor('tagcloud', new TagCloud(this).processor);

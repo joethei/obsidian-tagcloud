@@ -32,7 +32,9 @@ export class Wordcloud {
 			if (!(file instanceof TFile)) return;
 
 			if (options.stopwords) {
-				content = removeStopwords(await convertToMap(await getWords(await this.plugin.app.vault.read(file))));
+				const tmp = this.plugin.settings.stopwords.split("\n");
+				const customStopwords = new Set<string>(tmp);
+				content = removeStopwords(await convertToMap(await getWords(await this.plugin.app.vault.read(file))), customStopwords);
 			} else {
 				content = await convertToMap(await getWords(await this.plugin.app.vault.read(file)));
 			}

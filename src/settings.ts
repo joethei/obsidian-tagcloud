@@ -55,5 +55,16 @@ export class TagCloudPluginSettingsTab extends PluginSettingTab{
 					text.inputEl.setAttr("rows", 8);
 				}
 			);
+
+		new Setting(containerEl)
+			.setDesc("Recalculate Word Distribution")
+			.setDesc("")
+			.addButton(button => {
+				button
+					.setButtonText("Recalculate Word Distribution")
+					.onClick(async () => {
+						await this.plugin.calculateWordDistribution(true);
+					})
+			});
 	}
 }
