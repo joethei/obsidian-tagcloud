@@ -19,7 +19,7 @@ export function removeMarkdown(text: string): string {
 		.replace(/\[([\s\S]*?)\]/g, '$1')//normal brackets[]
 		.replace(/\(([\s\S]*?)\)/g, '$1')//normal brackets()
 		.replace(/^(.*?)::(.*?)$/gm, '') //dataview inline attributes
-		.replace(/[,.;:|#-()=_*-^\[\]]/g, '')
+		.replace(/[,.;:|#()=_*^\[\]-]/g, '')
 		.replace(/<("[^"]*"|'[^']*'|[^'">])*>/gm, '') //html (regex from: https://www.data2type.de/xml-xslt-xslfo/regulaere-ausdruecke/regex-methoden-aus-der-praxis/beispiele-zu-html/html-tags-erkennen)
 		.replace(/\s\S\s/g, ' ') //single chars;
 }
