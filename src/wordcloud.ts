@@ -1,5 +1,6 @@
-import TagCloudPlugin from "./main";
+import TagCloudPlugin, {logger} from "./main";
 import {MarkdownPostProcessorContext, TFile} from "obsidian";
+import {getAPI} from "obsidian-dataview";
 import {convertToMap, getWords, recordToArray, removeStopwords} from "./functions";
 import WordCloud from "wordcloud";
 
@@ -50,8 +51,34 @@ export class Wordcloud {
 			}
 		}
 		if (options.source === 'query') {
-			el.createEl("p", {cls: "cloud-error"}).setText("Queries are not supported in a wordcloud");
-			return;
+			const dataviewAPI = getAPI();
+			if (dataviewAPI === undefined) {
+				el.createEl("p", {cls: "cloud-error"}).setText("Dataview is not installed, but is required to use queries");
+				return;
+			}
+
+			try {
+				const query = options.query;
+				if(!query) {
+					el.createEl('p', {cls: "cloud-error"}).setText("query option is required");
+					return;
+				}
+
+				const page = dataviewAPI.page(query);
+
+				if(!page) {
+					el.createEl('p', {cls: "cloud-error"}).setText("Page not found");
+					return;
+				}
+
+				const rawContent = await dataviewAPI.io.load(page.file.path)
+				const parsedWords = await getWords(rawContent)
+				content = await convertToMap(parsedWords);
+			} catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
+				el.createEl('p', {cls: "cloud-error"}).setText(error.toString());
+				logger.error(error);
+				return;
+			}
 		}
 		/*this part is really not performant, need to find a better solution.
 		if(options.source === 'query') {
