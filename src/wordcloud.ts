@@ -74,35 +74,18 @@ export class Wordcloud {
 				const rawContent = await dataviewAPI.io.load(page.file.path)
 				const parsedWords = await getWords(rawContent)
 				content = await convertToMap(parsedWords);
+
+				if(options.stopwords) {
+					const tmp = this.plugin.settings.stopwords.split("\n");
+					const customStopwords = new Set<string>(tmp);
+					content = removeStopwords(content, customStopwords)
+				}
 			} catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
 				el.createEl('p', {cls: "cloud-error"}).setText(error.toString());
 				logger.error(error);
 				return;
 			}
 		}
-		/*this part is really not performant, need to find a better solution.
-		if(options.source === 'query') {
-			const dataviewAPI = getAPI();
-			if(dataviewAPI === undefined) {
-				el.createEl("p").setText("Dataview is not installed, but is required to use queries");
-				return;
-			}
-
-			const pages = dataviewAPI.pages(options.query, ctx.sourcePath);
-			const words : string[] = [];
-			for (let page of pages) {
-				const file = this.app.vault.getAbstractFileByPath(page.file.path);
-				if (file === undefined) return;
-				if (!(file instanceof TFile)) return;
-				const fileContent = await this.app.vault.read(file);
-				words.push(...this.getWords(fileContent));
-			}
-			if(options.stopwords) {
-				content = this.convertToMap(this.removeStopwords(words));
-			}else {
-				content = this.convertToMap(words);
-			}
-		}*/
 
 		el.empty();
 
