@@ -19,7 +19,7 @@ export function removeMarkdown(text: string): string {
 		.replace(/\[([\s\S]*?)\]/g, '$1')//normal brackets[]
 		.replace(/\(([\s\S]*?)\)/g, '$1')//normal brackets()
 		.replace(/^(.*?)::(.*?)$/gm, '') //dataview inline attributes
-		.replace(/[,.;:|#()=_*^\[\]-]/g, '')
+		.replace(/[,.;:|#()=_*^[\]-]/g, '')
 		.replace(/<("[^"]*"|'[^']*'|[^'">])*>/gm, '') //html (regex from: https://www.data2type.de/xml-xslt-xslfo/regulaere-ausdruecke/regex-methoden-aus-der-praxis/beispiele-zu-html/html-tags-erkennen)
 		.replace(/\s\S\s/g, ' ') //single chars;
 }
@@ -64,7 +64,8 @@ export async function recordToArray(record: Record<string, number>) : Promise<[s
 }
 
 export async function mergeMaps(map1: Record<string, number>, map2: Record<string, number>) : Promise<Record<string, number>> {
-	if(map1 === undefined) return map2;
+	return Object.assign({}, map1, map2);
+	/*if(map1 === undefined) return map2;
 	if(map2 === undefined) return map1;
 
 	const result: Record<string, number> = {};
@@ -81,5 +82,5 @@ export async function mergeMaps(map1: Record<string, number>, map2: Record<strin
 		}
 	}
 
-	return result;
+	return result;*/
 }

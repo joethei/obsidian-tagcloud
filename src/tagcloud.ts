@@ -58,7 +58,7 @@ export class TagCloud {
 					el.createEl('p', {cls: "cloud-error"}).setText("query option is required");
 					return;
 				}
-				if(!query.match(/[\[#]/)) {
+				if(!query.match(/[[#]/)) {
 					query = '"' + options.query + '"';
 				}
 				pages = dataviewAPI.pages(query, ctx.sourcePath);

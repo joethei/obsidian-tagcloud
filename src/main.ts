@@ -112,7 +112,7 @@ export default class TagCloudPlugin extends Plugin {
 		}
 	}
 
-	async calculateWordDistribution(fresh: boolean = false) {
+	async calculateWordDistribution(fresh = false) {
 		if (this.calculatingWordDistribution) {
 			new Notice("Word distribution is already beeing calculated");
 			return;
@@ -171,9 +171,11 @@ export default class TagCloudPlugin extends Plugin {
 				const withStopwords = await convertToMap(words);
 				this.fileContentsWithStopwords = await mergeMaps(this.fileContentsWithStopwords, withStopwords);
 
+				console.log(customStopwords);
+
 				const withoutStopwords = removeStopwords(withStopwords, customStopwords);
 				this.fileContentsWithoutStopwords = await mergeMaps(this.fileContentsWithoutStopwords, withoutStopwords);
-
+				console.log(this.fileContentsWithoutStopwords);
 				this.settings.filecache[file.path] = {
 					withStopwords: withStopwords,
 					withoutStopwords: withoutStopwords,
@@ -210,7 +212,7 @@ export default class TagCloudPlugin extends Plugin {
 		const tmp: [string, number][] = [];
 		let last = Infinity;
 		let i = options.maxDepth;
-		for (let sortedElement of sorted) {
+		for (const sortedElement of sorted) {
 			if(i <= 0) {
 				break;
 			}
@@ -256,10 +258,12 @@ export default class TagCloudPlugin extends Plugin {
 		await this.loadSettings();
 		this.addSettingTab(new TagCloudPluginSettingsTab(this));
 
-		Object.entries(stopword).forEach(stopword => {
-			if (stopword[0] !== "removeStopwords")
-				stopwords.add(stopword[0]);
-		});
+		for (const key of Object.keys(stopword)) {
+			// @ts-ignore
+			for (const value of Object.values(stopword[key])) {
+				stopwords.add(value as string);
+			}
+		}
 
 		if (!WordCloud.isSupported) {
 			new Notice("the Word & Tag cloud plugin is not compatible with your device");
@@ -267,7 +271,7 @@ export default class TagCloudPlugin extends Plugin {
 		}
 
 		this.app.workspace.onLayoutReady(async () => {
-			setTimeout(async () => await this.calculateWordDistribution(), 5000);
+			//setTimeout(async () => await this.calculateWordDistribution(), 5000);
 		});
 
 		this.addCommand({
