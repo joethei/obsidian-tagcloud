@@ -10,7 +10,7 @@ export function removeMarkdown(text: string): string {
 		.replace(/\[\[(.*(?=\|))(.*)\]\]/g, '$2') //wikilinks with alias
 		.replace(/\[\[([\s\S]*?)\]\]/gm, '$1') //wikilinks
 		.replace(/- ?\[.?\]/gm, '') //tasks
-		.replace(/%%.*?%%/gm, '')//Obsidian Comments
+		.replace(/%%(.|\n)*?%%/gm, '')//Obsidian Comments
 		.replace(/`([\s\S]*?)`/gm, '') //codeblocks, inline & normal
 		.replace(/\[\^[[\s\S]]*\]/g, '') //footnotes
 		.replace(/\^\[([\s\S]*?)\]/g, '$1') //inline footnotes
@@ -36,20 +36,13 @@ export function removeStopwords(words: Record<string, number>, customStopwords: 
 }
 
 export async function getWords(text: string): Promise<string[]> {
-	const words = text.split(/[\n\s]/g);
-	const output: string[] = [];
-	for (let word of words) {
-		const result = removeMarkdown(word).toLocaleLowerCase();
-		if(result.length > 0) {
-			output.push(result);
-		}
-	}
-	return output;
+	const cleanText = removeMarkdown(text).toLocaleLowerCase();
+	return cleanText.split(/[\n\s]/g);
 }
 
 export async function convertToMap(words: string[]): Promise<Record<string, number>> {
 	const record: Record<string, number> = {};
-	for (let word of words) {
+	for (const word of words) {
 		const element = record[word];
 		if(element) {
 			record[word] = element + 1;

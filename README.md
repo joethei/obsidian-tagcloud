@@ -104,6 +104,15 @@ source: file
 ```
 ~~~
 
+#### Show all words using a folder/file
+
+~~~markdown
+```wordcloud
+source: file
+query: 'Folder/File'
+```
+~~~
+
 ### Options
 
 | **Name**  | **Description**                                                                                                 | **Possible Values** | **Default** |
