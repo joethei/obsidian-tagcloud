@@ -72,8 +72,9 @@ export class TagCloud {
 				tags.push(...page.file.tags);
 			}
 		}
-
-		const map = tags.map(t => t.replace('#', '')).reduce((acc, e) => acc.set(e, (acc.get(e) || 0) + 1), new Map());
+		const exclude = options.exclude.map(t => '#'+t)
+		const filteredTags = exclude.length ==0 ? tags : tags.filter(tag => !exclude.some(e => tag===e))
+		const map = filteredTags.map(t => t.replace('#', '')).reduce((acc, e) => acc.set(e, (acc.get(e) || 0) + 1), new Map());
 		const filtered = Array.from(map.entries()).filter(([_, v]) => v >= options.minCount);
 
 		el.empty();

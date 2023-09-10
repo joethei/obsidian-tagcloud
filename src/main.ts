@@ -32,6 +32,7 @@ export interface CodeblockOptions {
 	type: 'unresolved' | 'resolved' | 'both';
 	shrinkToFit: boolean,
 	maxDepth: number,
+	exclude: Array<string>,
 }
 
 type MergeTask = {
@@ -109,6 +110,7 @@ export default class TagCloudPlugin extends Plugin {
 			type: yaml.type ? yaml.type : 'resolved',
 			shrinkToFit: yaml.shrinkToFit ? yaml.shrinkToFit : true,
 			maxDepth: yaml.maxDepth ? yaml.maxDepth : 15,
+			exclude: yaml.exclude ? yaml.exclude : []
 		}
 	}
 
