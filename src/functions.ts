@@ -64,8 +64,7 @@ export async function recordToArray(record: Record<string, number>) : Promise<[s
 }
 
 export async function mergeMaps(map1: Record<string, number>, map2: Record<string, number>) : Promise<Record<string, number>> {
-	return Object.assign({}, map1, map2);
-	/*if(map1 === undefined) return map2;
+	if(map1 === undefined) return map2;
 	if(map2 === undefined) return map1;
 
 	const result: Record<string, number> = {};
@@ -82,5 +81,5 @@ export async function mergeMaps(map1: Record<string, number>, map2: Record<strin
 		}
 	}
 
-	return result;*/
+	return result;
 }
