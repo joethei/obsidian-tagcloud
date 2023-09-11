@@ -1,7 +1,6 @@
 import TagCloudPlugin from "./main";
 import {PluginSettingTab, Setting} from "obsidian";
 import WordCloud from "wordcloud";
-import {TagsSuggest} from "./suggest/tags";
 
 export interface WordsCache {
 	withStopwords: Record<string, number>;
