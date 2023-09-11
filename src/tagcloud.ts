@@ -72,8 +72,9 @@ export class TagCloud {
 				tags.push(...page.file.tags);
 			}
 		}
-		const exclude = options.exclude.map(t => '#'+t)
-		const filteredTags = exclude.length ==0 ? tags : tags.filter(tag => !exclude.some(e => tag===e))
+		const exclude = options.exclude.map(t => '#' + t);
+		const alwaysExcluded = this.plugin.settings.tags.exclude.map(t => '#' + t);
+		const filteredTags = tags.filter(tag => !exclude.some(e => tag === e) && !alwaysExcluded.some(e => tag === e));
 		const map = filteredTags.map(t => t.replace('#', '')).reduce((acc, e) => acc.set(e, (acc.get(e) || 0) + 1), new Map());
 		const filtered = Array.from(map.entries()).filter(([_, v]) => v >= options.minCount);
 

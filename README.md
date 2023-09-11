@@ -73,6 +73,7 @@ query: '[[Other note]]'
 | **Name** | **Description**                                                                                                | **Possible Values**                                                                        |
 |----------|----------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------|
 | query    | Requires [Dataview](https://github.com/blacksmithgu/obsidian-dataview), requires `source` to be set to `query` | A valid [Dataview Source](https://blacksmithgu.github.io/obsidian-dataview/query/sources/) |
+| exclude  | exclude certain tags from the tagcloud                                                                         | an array of tags                                                                           |
 
 All other options from [here](#general-options) still apply
 

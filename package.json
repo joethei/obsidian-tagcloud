@@ -28,6 +28,7 @@
 		"@types/stopword": "^1.0.2",
 		"obsidian-dataview":  "^0.4.22",
 		"typescript-logger": "^5.0.1",
-		"stopwords-iso": "^1.1.0"
+		"stopwords-iso": "^1.1.0",
+		"@popperjs/core": "2.11.8"
 	}
 }

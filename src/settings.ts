@@ -1,6 +1,7 @@
 import TagCloudPlugin from "./main";
 import {PluginSettingTab, Setting} from "obsidian";
 import WordCloud from "wordcloud";
+import {TagsSuggest} from "./suggest/tags";
 
 export interface WordsCache {
 	withStopwords: Record<string, number>;
@@ -12,6 +13,9 @@ export interface TagCloudPluginSettings {
 	stopwords: string,
 	filecache: Record<string, WordsCache>,
 	wordCache: WordsCache,
+	tags: {
+		exclude: Array<string>;
+	}
 }
 
 export const DEFAULT_SETTINGS: TagCloudPluginSettings = {
@@ -21,6 +25,9 @@ export const DEFAULT_SETTINGS: TagCloudPluginSettings = {
 		withoutStopwords: {},
 		withStopwords: {},
 		timestamp: 0,
+	},
+	tags: {
+		exclude: [],
 	}
 }
 
@@ -57,7 +64,6 @@ export class TagCloudPluginSettingsTab extends PluginSettingTab{
 			);
 
 		new Setting(containerEl)
-			.setDesc("Recalculate Word Distribution")
 			.setDesc("")
 			.addButton(button => {
 				button
@@ -65,6 +71,21 @@ export class TagCloudPluginSettingsTab extends PluginSettingTab{
 					.onClick(async () => {
 						await this.plugin.calculateWordDistribution(true);
 					})
+			});
+
+		new Setting(containerEl).setName('Tagcloud').setHeading();
+
+		new Setting(containerEl)
+			.setName('Excluded tags')
+			.setDesc('The following tags wil be excluded from all tag clouds (one per line, without the #)')
+			.addTextArea(text => {
+				//new TagsSuggest(this.app, text.inputEl);
+				text.setValue(this.plugin.settings.tags.exclude.join(', '));
+				text.onChange(async value => {
+					this.plugin.settings.tags.exclude = value.split(', ');
+					await this.plugin.saveSettings();
+				});
+				text.inputEl.setAttr('rows', 10);
 			});
 	}
 }
