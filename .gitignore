@@ -1,6 +1,9 @@
 # vscode
 .vscode
 
+# visual studio
+.vs
+
 # Intellij
 *.iml
 .idea
